@@ -6,7 +6,22 @@ from Crypto.Cipher import PKCS1_v1_5
 import base64
 import requests
 import time
+import urllib3
+import random
 
+urllib3.disable_warnings()
+
+
+def random_uuid():
+    def replace_char(c):
+        r = random.randint(0, 15)
+        if c == 'x':
+            return hex(r)[2:]  # Get the hex representation and remove '0x'
+        elif c == 'y':
+            return hex((r & 0x3) | 0x8)[2:]  # Ensure first bit is 1
+
+    uuid_format = "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+    return ''.join(replace_char(c) if c in 'xy' else c for c in uuid_format)
 
 class HaloBackup:
     def __init__(self):
@@ -19,9 +34,10 @@ class HaloBackup:
         self.remote_url = None  # 远程url，即被同步的服务器
         self.local_url = None  # 本地url，即要同步的服务器
         # self.session.verify = False
-        self.username = None  # 在这里修改账号密码
+        self.username = None  
         self.password = None
         self.backupjson = None
+        self.random_uuid = random_uuid()
 
     def loadProfile(self):
         with open('settings.yml', 'r') as f:
@@ -116,13 +132,13 @@ class HaloBackup:
         print(response.text)
 
     def restart(self):
+        self.localSession.headers.update({"X-XSRF-TOKEN": self.random_uuid})
         self.localSession.post(f'{self.local_url}/actuator/restart')
 
     def login(self, url, username, password):
         session = requests.session()
-        # session.verify = False
-        # session.verify = False
-        session.cookies.update({"XSRF-TOKEN": "85580821-6cd4-4d14-ad86-0347a472f8d2"})
+        session.verify = False
+        session.cookies.update({"XSRF-TOKEN": self.random_uuid})
         session.get(f"{url}/console")
         public_key_base64 = session.get(f'{url}/login/public-key').json()["base64Format"]
         # 解码 Base64 格式的公钥
@@ -136,7 +152,7 @@ class HaloBackup:
 
         # print(encrypted_password)
         res = session.post(f"{url}/login?remember-me=false",
-                           data={"_csrf": "85580821-6cd4-4d14-ad86-0347a472f8d2", "username": username,
+                           data={"_csrf": self.random_uuid, "username": username,
                                  "password": encrypted_password})
         return session
 
