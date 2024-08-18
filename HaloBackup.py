@@ -6,10 +6,11 @@ from Crypto.Cipher import PKCS1_v1_5
 import base64
 import requests
 import time
-import urllib3
+from urllib3 import disable_warnings
 import random
 
-urllib3.disable_warnings()
+
+disable_warnings()
 
 
 def random_uuid():
@@ -34,7 +35,7 @@ class HaloBackup:
         self.remote_url = None  # 远程url，即被同步的服务器
         self.local_url = None  # 本地url，即要同步的服务器
         # self.session.verify = False
-        self.username = None  
+        self.username = None  # 在这里修改账号密码
         self.password = None
         self.backupjson = None
         self.random_uuid = random_uuid()
@@ -48,7 +49,6 @@ class HaloBackup:
             self.remote_url = yml["remote_url"]
 
 
-
     def downloadBackup(self):
         while not self.getBackUpStatus():
             time.sleep(1)
@@ -60,7 +60,8 @@ class HaloBackup:
             return
         # 到这里就是决定要下载了，把其他的全删了
         for item in os.listdir('backup'):
-            os.remove("backup/" + item)
+            if ".zip" in item:
+                os.remove("backup/" + item)
         with open(f'backup/{self.backupjson["items"][0]["status"]["filename"]}', "wb") as f:
             with self.RemoteSession.get(f'{self.remote_url}/apis/api.console.migration.halo.run/v1alpha1/backups/{self.backupjson["items"][0]["metadata"]["name"]}/files/{self.backupjson["items"][0]["status"]["filename"]}', stream=True) as r:
                 length = int(r.headers["Content-Length"])
@@ -71,7 +72,6 @@ class HaloBackup:
                     now += len(line)
                     sys.stdout.write(f"\r当前下载备份文件进度 {now / length * 100:.2f} %")
                     sys.stdout.flush()
-
 
     def backup(self):
         import datetime
