@@ -163,14 +163,14 @@ class HaloBackup:
         for i in range(len(self.backupjson["items"])):  # 找到第一个备份成功的下载
             if self.backupjson["items"][i]["status"]["phase"] == "SUCCEEDED":
                 return True
-        self.backup()
+        if len(self.backupjson["items"]) < 1:
+            self.backup()
         return False
 
     def run(self):
         self.loadProfile()
         self.RemoteSession = self.login(self.remote_url, self.username, self.password)
-        if not self.getBackUpStatus():
-            self.backup()
+        self.getBackUpStatus()
         self.downloadBackup()
         self.localSession = self.login(self.local_url, self.username, self.password)
         self.upload()
